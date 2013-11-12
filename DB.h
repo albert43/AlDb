@@ -71,7 +71,7 @@ namespace AlDb
 		//		DataType	: The type.
 		//	o/p:
 		//		DB_RET_SUCCESS			: Success.
-		//		DB_RET_ERR_PARAMETER	: Input parameter incorrect
+		//		DB_RET_ERR_PARAMETER	: Input parameter incorrect.
 		DB_RET setDataType(DATA_T DataType);
 
 		//	# Description:
@@ -88,9 +88,7 @@ namespace AlDb
 		//		Data	: The data.
 		//	o/p:
 		//		DB_RET_SUCCESS			: Success.
-		//		DB_RET_ERR_PROCEDURE	: Procedure incorrect.
-		//		DB_RET_ERR_DB_TYPE		: Incorrect data type.
-		//		DB_RET_ERR_SYS_MEMORY	: System memory error.
+		//		DB_RET_ERR_INTERNAL		: The program internal error.
 		DB_RET setData(DATA_VAL *pData);
 
 		//	# Description:
@@ -100,8 +98,17 @@ namespace AlDb
 		//	o/p:
 		//		DB_RET_SUCCESS		: Success.
 		//		DB_RET_ERR_PROCEDURE: Procedure incorrect.
-		//		DB_RET_ERR_DB_TYPE	: Incorrect data type.
+		//		DB_RET_ERR_PARAMETER: Input parameter incorrect.
 		DB_RET getData(DATA_VAL *pData);
+
+		//	# Description:
+		//		Compare the data. Include data type.
+		//	i/p:
+		//		pDataUnit	: The compared data.
+		//	o/p:
+		//		TRUE	: It's the same.
+		//		FALSE	: It's NOT the same.
+		bool compareData(DataUnit *pDataUnit);
 
 		//	# Description:
 		//		Set data to NULL.
@@ -111,6 +118,13 @@ namespace AlDb
 		//		None.
 		void clearData();
 
+		//	# Description:
+		//		Check the data is NULL or not.
+		//	i/p:
+		//		None.
+		//	o/p:
+		//		TRUE	: It's NULL.
+		//		FALSE	: It's not NULL.
 		bool isNull();
 
 	private:
@@ -119,20 +133,88 @@ namespace AlDb
 		DB_RET				m_Ret;
 	};
 
-	class Column
+	class Column : public DataUnit
 	{
 	public:
 		Column();
 		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, bool bNullable, string strForeKey);
+		
+		//	# Description:
+		//		Open a column class.
+		//	i/p:
+		//		hTable		: The table handle.
+		//		strColName	: The column name.
+		//		DataType	: The column data type.
+		//		bPriKey		: It's primary key column.
+		//		bNullable	: The column is nullable.
+		//		strForeKey	: The foreign key table name.
+		//	o/p:
+		//		DB_RET_SUCCESS				: Success
+		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
+		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
 		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, bool bNullable, string strForeKey);
 		
+		//	# Description:
+		//		Add a data in column.
+		//	i/p:
+		//		Data	: The data.
+		//	o/p:
+		//		DB_RET_SUCCESS				: Success
+		//		DB_RET_ERR_DB_ATTRIBUTE		: Violate the column attribution.
+		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
+		//		DB_RET_ERR_DB_FULL			: The column is full.
 		DB_RET addData(DataUnit Data);
-		DB_RET deleteData(DataUnit Data);
-		DB_RET deleteData(unsigned int uiIndex);
-		int searchData(DataUnit *pData);
-		DB_RET getData(unsigned int uiIndex, DataUnit *pData);
-		DB_RET checkData(DataUnit Data);
 
+		//	# Description:
+		//		Delete a data.
+		//	i/p:
+		//		pData	: The data.
+		//	o/p:
+		//		DB_RET_SUCCESS			: Success
+		//		DB_RET_ERR_PARAMETER	: Input parameter incorrect.
+		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
+		DB_RET deleteData(DataUnit *pData);
+
+		//	# Description:
+		//		Delete a data.
+		//	i/p:
+		//		uiIndex	: The index of the vector.
+		//	o/p:
+		//		DB_RET_SUCCESS			: Success
+		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
+		DB_RET deleteData(unsigned int uiIndex);
+		
+		//	# Description:
+		//		Search the data. If pData is not NULL, it will search from 
+		//		the begin of the list, otherwise, it will continue searching 
+		//		the data.
+		//	i/p:
+		//		The data.
+		//	o/p:
+		//		Success	: It returns the index of the data.
+		//		Failure	: It returns a number less than 0 which match the DB_RET.
+		//			DB_RET_ERR_DB_NOT_FOUND	: Data not found.
+		//			DB_RET_ERR_PARAMETER	: Input parameter incorrect.
+		int searchData(DataUnit *pData);
+
+		//	# Description:
+		//		Get the data.
+		//	i/p:
+		//		uiIndex	: The vector index.
+		//		pData	: The data pointer to load the data.
+		//	o/p:
+		//		DB_RET_SUCCESS			: Success
+		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
+		DB_RET getData(unsigned int uiIndex, DataUnit *pData);
+
+		//	# Description:
+		//		Get data number.
+		//	i/p:
+		//		None.
+		//	o/p:
+		//		The data number of the column.
+		unsigned int getDataNumber();
+		
 	private:
 		HANDLE				m_hTable;
 		string				m_strColName;
@@ -146,6 +228,16 @@ namespace AlDb
 			int			iLast;
 			DataUnit	Data;
 		}m_Search;
+
+		//	# Description:
+		//		Check the data is valid or not.
+		//	i/p:
+		//		Data	: The data.
+		//	o/p:
+		//		DB_RET_SUCCESS
+		//		DB_RET_ERR_DB_ATTRIBUTE	:
+		//		DB_RET_ERR_DB_PRIMARY_KEY
+		DB_RET checkData(DataUnit Data);
 	};
 
 	class Table

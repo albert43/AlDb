@@ -12,10 +12,13 @@ void TestDataUnit()
 	DataUnit	du;
 	DATA_VAL	Val;
 	DATA_VAL	Val2;
+	DATA_T		t;
+
+	t=(DATA_T)59;
 
 	Val.b = true;
 	du.clearData();
-	Ret = du.setDataType(DATA_T_BOOL);
+	Ret = du.setDataType(t);
 	Ret = du.setData(&Val);
 	Ret = du.getData(&Val2);
 	bRet = du.isNull();
@@ -45,8 +48,6 @@ void TestDataUnit()
 int _tmain(int argc, _TCHAR* argv[])
 {
 	DataUnit	du;
-	bool		pi;
-	DB_RET		Ret;
 	DATA_T		DataType;
 	time_t		t;
 	string		str = "I'm Huang";

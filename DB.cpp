@@ -42,7 +42,6 @@ DATA_T DataUnit::getDataType()
 DB_RET DataUnit::setData(DATA_VAL *pData)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-	void	*p;
 
 	if (m_DataType == DATA_T_NONE)
 		return DB_RET_ERR_PROCEDURE;
@@ -89,6 +88,35 @@ DB_RET DataUnit::getData(DATA_VAL *pData)
 	return DB_RET_SUCCESS;
 }
 
+bool DataUnit::compareData(DataUnit *pDataUnit)
+{
+	DATA_T	DataType;
+
+	DataType = pDataUnit->getDataType();
+	if (m_DataType != DataType)
+		return false;
+
+	if (m_Data.bNull != pDataUnit->m_Data.bNull)
+		return false;
+
+	switch(DataType)
+	{
+		case DATA_T_BOOL:
+		case DATA_T_DECIMAL:
+		case DATA_T_INTEGER:
+		case DATA_T_TIME:
+			if (m_Data.t != pDataUnit->m_Data.t)
+				return false;
+			break;
+		case DATA_T_STRING:
+			if (m_Data.str.compare(pDataUnit->m_Data.str) != 0)
+				return false;
+			break;
+	}
+
+	return true;
+}
+
 void DataUnit::clearData()
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
@@ -104,26 +132,50 @@ bool DataUnit::isNull()
 /*****************************************************************************/
 /******************************* Column Class ********************************/
 /*****************************************************************************/
-Column::Column(){}
+Column::Column()
+{
+	m_hTable = NULL;
+	m_strColName.clear();
+	m_DataType = DATA_T_NONE;
+	m_bPriKey = false;
+	m_bNullable = false;
+	m_strForeKey.clear();
+}
 
 Column::Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, bool bNullable, string strForeKey)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
+
+	open(hTable, strColName, DataType, bPriKey, bNullable, strForeKey);
 }
 
 DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, bool bNullable, string strForeKey)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
 
+	DB_RET	Ret;
+
 	//	hTable can be set when adding in table.
-	if ((strColName.length() == 0) || (DataType == DATA_T_NONE))
+	if (strColName.length() == 0)
 		return DB_RET_ERR_PARAMETER;
 
-	if ((bPriKey == true) && (bNullable == true))
-		return DB_RET_ERR_DB_PRIMARY_KEY;
+	//	Check primary key attribute.
+	if (bPriKey == true)
+	{
+		if (bNullable == true)
+			return DB_RET_ERR_DB_PRIMARY_KEY;
+		if (DataType == DATA_T_BOOL)
+			return DB_RET_ERR_DB_PRIMARY_KEY;
+		if (strForeKey.length() > 0)
+			return DB_RET_ERR_DB_PRIMARY_KEY;
+	}
+	
+	if ((Ret = this->setDataType(DataType)) != DB_RET_SUCCESS)
+		return Ret;
 
 	m_hTable = hTable;
 	m_strColName = strColName;
+	m_DataType = DataType;
 	m_bPriKey = bPriKey;
 	m_bNullable = bNullable;
 	m_strForeKey = strForeKey;
@@ -153,28 +205,80 @@ DB_RET Column::addData(DataUnit Data)
 	return DB_RET_SUCCESS;
 }
 
-DB_RET Column::deleteData(DataUnit Data)
+DB_RET Column::deleteData(DataUnit *pData)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-	return DB_RET_SUCCESS;
+
+	int		iIndex;
+
+	if (pData == NULL)
+		return DB_RET_ERR_PARAMETER;
+	
+	iIndex = searchData(pData);
+	if (iIndex < 0)
+		return DB_RET_ERR_DB_NOT_FOUND;
+
+	return deleteData((unsigned int)iIndex);
 }
 
 DB_RET Column::deleteData(unsigned int uiIndex)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
+
+	if (uiIndex >= m_vDatas.size())
+		return DB_RET_ERR_DB_NOT_FOUND;
+
+	m_vDatas.erase(m_vDatas.begin() + uiIndex);
+
 	return DB_RET_SUCCESS;
 }
 
 int Column::searchData(DataUnit *pData)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-	return 0;
+	
+	unsigned int	ui;
+
+	if (m_DataType != pData->getDataType())
+		return (int)DB_RET_ERR_PARAMETER;
+
+	if (pData)
+	{
+		m_Search.Data = *pData;
+		m_Search.iLast = -1;
+	}
+
+	for (ui = 0; ui < m_vDatas.size(); ui++)
+		if (m_vDatas[ui].compareData(&m_Search.Data) == true)
+			return ui;
+
+	//	Can not find the data, reset!
+	m_Search.Data.clearData();
+	m_Search.iLast = -1;
+
+	return (int)DB_RET_ERR_DB_NOT_FOUND;
 }
 
 DB_RET Column::getData(unsigned int uiIndex, DataUnit *pData)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
+
+	if (pData == NULL)
+		return DB_RET_ERR_PARAMETER;
+
+	if (uiIndex >= m_vDatas.size())
+		return DB_RET_ERR_DB_NOT_FOUND;
+
+	*pData = m_vDatas[uiIndex];
+
 	return DB_RET_SUCCESS;
+}
+
+unsigned int Column::getDataNumber()
+{
+	cout << __FUNCTION__ << "():" << __LINE__ << endl;
+
+	return m_vDatas.size();
 }
 
 DB_RET Column::checkData(DataUnit Data)
@@ -195,8 +299,6 @@ DB_RET Column::checkData(DataUnit Data)
 		if (searchData(&Data) != -1)
 			return DB_RET_ERR_DB_PRIMARY_KEY;
 	}
-
-	//	Check foreign key
 
 	return DB_RET_SUCCESS;
 }
