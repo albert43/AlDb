@@ -41,3 +41,29 @@ should add to or customize.
 Develop notes:
 Class Data inherit Class ColumnAttr
 Class Column inherit Class Data
+
+
+
+AlDb is a database engine. It provide a uncompressed database sysytem, all of the data
+are stored in text base files. Table's data store in 
+
+AlDb is wroten in C++, it has 4 classes - Db, Talbe, Column and DataUnit.
+DataUnit is a basic data unit. All the data must add in or get from database through this class.
+
+#	Does NOT support NULL data.
+
+#	Known issue.
+	#	The lower layer data can not be accessed by upper layer class.
+		AlDb::Column::m_vDatas can not be accessed by AlDb::Table
+	#	The allocated array pointer should initilize to NULL in Constructor to avoid
+		crash becaseu of freeing a non-exist memory.
+		If the initial value isn't NULL the code will free it.
+		(done)
+	#	m_Search.Item.past can not be freed in deconstructor.
+
+#	To-do...
+	#	Add function to get column attributes and change column attributes member variable
+		to private.	(done)
+	#	Using char * to instead of string
+	#	Change the name m_Search.Item to m_Search.Column
+	#	Check class name for handle parameters

@@ -6,7 +6,16 @@
 #include <algorithm>
 #include <iostream>
 #include <time.h>
+#include <stdarg.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <direct.h>
 using namespace std;
+
+#define	VERSION_LIB_ALDB_MAJOR		1
+#define	VERSION_LIB_ALDB_MINOR		0
+#define	VERSION_LIB_ALDB_RELEASE	0
+#define	VERSION_LIB_ALDB_BUILD		2
 
 namespace AlDb
 {
@@ -24,6 +33,7 @@ namespace AlDb
 		DB_RET_ERR_DB_TYPE,				//	Incorrect data type.
 		DB_RET_ERR_SYS = -500,
 		DB_RET_ERR_SYS_MEMORY,			//	System memory error.
+		DB_RET_ERR_SYS_IO,			//	System i/o error.
 		DB_RET_ERR_PARAMETER,			//	Input parameter incorrect
 		DB_RET_ERR_PROCEDURE,			//	Procedure incorrect.
 		DB_RET_ERR_INTERNAL,
@@ -43,7 +53,6 @@ namespace AlDb
 
 	struct DATA_VAL
 	{
-		bool			bNull;
 		union 
 		{
 			bool		b;
@@ -53,127 +62,75 @@ namespace AlDb
 		};
 		string			str;
 	};
-
-	/*****************************************************************************/
-	/****************************** Data Unit Class ******************************/
-	/*****************************************************************************/
-	//	Version: 1.0.0
-	//		Release Data: 2013-11-09
-	class DataUnit
+//	DB_RET Pvoid2DataVal(DATA_T DataType, void *pData, DATA_VAL *pstData);
+//	DB_RET DataVal2Pvoid(DATA_T DataType, DATA_VAL *pstData, void *pData);
+		
+	struct COLUMN_ATTR
 	{
-	public:
-		DataUnit();
-		DataUnit(DATA_T DataType);
-
-		//	# Description:
-		//		Set the data type. This function will also set data to NULL.
-		//	i/p:
-		//		DataType	: The type.
-		//	o/p:
-		//		DB_RET_SUCCESS			: Success.
-		//		DB_RET_ERR_PARAMETER	: Input parameter incorrect.
-		DB_RET setDataType(DATA_T DataType);
-
-		//	# Description:
-		//		Get the data type.
-		//	i/p:
-		//		None.
-		//	o/p:
-		//		The data type.
-		DATA_T getDataType();
-
-		//	# Description:
-		//		Set the data.
-		//	i/p:
-		//		Data	: The data.
-		//	o/p:
-		//		DB_RET_SUCCESS			: Success.
-		//		DB_RET_ERR_INTERNAL		: The program internal error.
-		DB_RET setData(DATA_VAL *pData);
-
-		//	# Description:
-		//		Get the data.
-		//	i/p:
-		//		pData	: A variable pointer to load data.
-		//	o/p:
-		//		DB_RET_SUCCESS		: Success.
-		//		DB_RET_ERR_PROCEDURE: Procedure incorrect.
-		//		DB_RET_ERR_PARAMETER: Input parameter incorrect.
-		DB_RET getData(DATA_VAL *pData);
-
-		//	# Description:
-		//		Compare the data. Include data type.
-		//	i/p:
-		//		pDataUnit	: The compared data.
-		//	o/p:
-		//		TRUE	: It's the same.
-		//		FALSE	: It's NOT the same.
-		bool compareData(DataUnit *pDataUnit);
-
-		//	# Description:
-		//		Set data to NULL.
-		//	i/p:
-		//		None.
-		//	o/p:
-		//		None.
-		void clearData();
-
-		//	# Description:
-		//		Check the data is NULL or not.
-		//	i/p:
-		//		None.
-		//	o/p:
-		//		TRUE	: It's NULL.
-		//		FALSE	: It's not NULL.
-		bool isNull();
-
-	private:
-		DATA_T				m_DataType;
-		DATA_VAL			m_Data;
-		DB_RET				m_Ret;
+		string			strColName;
+		DATA_T			DataType;
+		bool			bPriKey;
+		string			strForeKey;
 	};
 
-	class Column : public DataUnit
+	class Column
 	{
 	public:
 		Column();
-		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, bool bNullable, string strForeKey);
+		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey);
 		
 		//	# Description:
-		//		Open a column class.
+		//		Open a Column class.
 		//	i/p:
 		//		hTable		: The table handle.
 		//		strColName	: The column name.
 		//		DataType	: The column data type.
 		//		bPriKey		: It's primary key column.
-		//		bNullable	: The column is nullable.
 		//		strForeKey	: The foreign key table name.
 		//	o/p:
 		//		DB_RET_SUCCESS				: Success
 		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
-		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, bool bNullable, string strForeKey);
-		
+		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey);
+
 		//	# Description:
 		//		Add a data in column.
 		//	i/p:
-		//		Data	: The data.
+		//		pData	: The DATA_VAL pointer of the data.
 		//	o/p:
 		//		DB_RET_SUCCESS				: Success
+		//		DB_RET_ERR_PROCEDURE
 		//		DB_RET_ERR_DB_ATTRIBUTE		: Violate the column attribution.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
 		//		DB_RET_ERR_DB_FULL			: The column is full.
-		DB_RET addData(DataUnit Data);
+		//		DB_RET_ERR_INTERNAL
+		DB_RET addData(DATA_VAL *pData);
+
+		//	# Description:
+		//		Search the data. If pData is not NULL, it will search from 
+		//		the begin of the list, otherwise, it will continue searching 
+		//		the data.
+		//	i/p:
+		//		pData		: The DATA_VAL pointer of the data.
+		//		bContiune
+		//			TRUE	: Search from the start.(index 0)
+		//			FALSE	: Continue the last search.
+		//	o/p:
+		//		Success	: It returns the index of the data.
+		//		Failure	: It returns a number less than 0 which match the DB_RET.
+		//			DB_RET_ERR_DB_NOT_FOUND	: Data not found.
+		//			DB_RET_ERR_PARAMETER	: Input parameter incorrect.
+		int searchData(DATA_VAL *pData, bool bContiune);
 
 		//	# Description:
 		//		Delete a data.
 		//	i/p:
-		//		pData	: The data.
+		//		pData	: The DATA_VAL pointer of the data.
 		//	o/p:
 		//		DB_RET_SUCCESS			: Success
 		//		DB_RET_ERR_PARAMETER	: Input parameter incorrect.
 		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
-		DB_RET deleteData(DataUnit *pData);
+		DB_RET deleteData(DATA_VAL *pData);
 
 		//	# Description:
 		//		Delete a data.
@@ -183,30 +140,27 @@ namespace AlDb
 		//		DB_RET_SUCCESS			: Success
 		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
 		DB_RET deleteData(unsigned int uiIndex);
-		
-		//	# Description:
-		//		Search the data. If pData is not NULL, it will search from 
-		//		the begin of the list, otherwise, it will continue searching 
-		//		the data.
-		//	i/p:
-		//		The data.
-		//	o/p:
-		//		Success	: It returns the index of the data.
-		//		Failure	: It returns a number less than 0 which match the DB_RET.
-		//			DB_RET_ERR_DB_NOT_FOUND	: Data not found.
-		//			DB_RET_ERR_PARAMETER	: Input parameter incorrect.
-		int searchData(DataUnit *pData);
 
 		//	# Description:
 		//		Get the data.
 		//	i/p:
 		//		uiIndex	: The vector index.
-		//		pData	: The data pointer to load the data.
+		//		pData	: 
 		//	o/p:
 		//		DB_RET_SUCCESS			: Success
 		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
-		DB_RET getData(unsigned int uiIndex, DataUnit *pData);
+		DB_RET getData(unsigned int uiIndex, DATA_VAL *pData);
 
+		//	# Description:
+		//		Compare the data. Include data type.
+		//	i/p:
+		//		uiIndex	: The index of the data in the column
+		//		pData	: The compared data.
+		//	o/p:
+		//		TRUE	: It's the same.
+		//		FALSE	: It's NOT the same.
+		bool compareData(unsigned int uiIndex, DATA_VAL *pData);
+		
 		//	# Description:
 		//		Get data number.
 		//	i/p:
@@ -215,83 +169,204 @@ namespace AlDb
 		//		The data number of the column.
 		unsigned int getDataNumber();
 		
+		//	# Description:
+		//		Reset the column.
+		//	i/p:
+		//		None.
+		//	o/p:
+		//		None.
+		void reset();
+
+		DB_RET getAttribute(COLUMN_ATTR *pAttr);
+		
 	private:
 		HANDLE				m_hTable;
-		string				m_strColName;
-		DATA_T				m_DataType;
-		bool				m_bPriKey;
-		bool				m_bNullable;
-		string				m_strForeKey;
-		vector<DataUnit>	m_vDatas;
-		struct 
+		COLUMN_ATTR			m_Attr;
+		vector<DATA_VAL>	m_vstDatas;
+		struct
 		{
-			int			iLast;
-			DataUnit	Data;
+			int				iLast;
+			DATA_VAL		stData;
 		}m_Search;
+	};//	End of Column class
 
-		//	# Description:
-		//		Check the data is valid or not.
-		//	i/p:
-		//		Data	: The data.
-		//	o/p:
-		//		DB_RET_SUCCESS
-		//		DB_RET_ERR_DB_ATTRIBUTE	:
-		//		DB_RET_ERR_DB_PRIMARY_KEY
-		DB_RET checkData(DataUnit Data);
+	struct TABLE_ATTR
+	{
+		string				strTableName;
+		int					iPrimary;
+		vector<string>		vstrForeign;
 	};
-
+	
 	class Table
 	{
 	public:
-		Table(){}
-		Table(HANDLE hDb, string strTableName){ cout << __FUNCTION__ << "()" << endl;}
-		DB_RET open(HANDLE hDb, string strTableName){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
+		Table();
+		Table(HANDLE hDb, string strTableName);
+		~Table();
+
+		//	# Description:
+		//		pOen a Table class.
+		//	i/p:
+		//		hDb			: The DB handle.
+		//		strTableName: The table name.
+		//	o/p:
+		//		DB_RET_SUCCESS				: Success
+		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
+		DB_RET open(HANDLE hDb, string strTableName);
+
+		DB_RET setDbHandle(HANDLE hDb);
+
+		DB_RET getAttribute(TABLE_ATTR *pAttr);
+
+		//	# Description:
+		//		Add a column in the table.
+		//	i/p:
+		//		strColName	: The column name.
+		//		DataType	: The column data type.
+		//		bPrimaryKey	: It's primary key column.
+		//		strForeKey	: The foreign key table name.
+		//	o/p:
+		//		DB_RET_SUCCESS				: Success
+		//		DB_RET_ERR_DB_ATTRIBUTE		: Violate table attribution.
+		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
+		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
+		//		DB_RET_ERR_DB_FULL			: The column is full.
+		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, string strForeignKey);
 		
-		Column* addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, bool bNullable, string strForeignKey){ cout << __FUNCTION__ << "()" << endl; Column *c; return c;}
-		Column* getColumn(string strColName){ cout << __FUNCTION__ << "()" << endl; Column *c; return c;}
-		Column* searchColumn(string strColName){ cout << __FUNCTION__ << "()" << endl; Column *c; return c;}
+		//	# Description:
+		//		Search the column.
+		//	i/p:
+		//		strColName	: The column name.
+		//	o/p:
+		//		Success	: It returns the index of the column.
+		//		Failure	: It returns -1.
+		int searchColumn(string strColName);
+
+		//	# Description:
+		//		Get a column entry.
+		//	i/p:
+		//		strColName	: The column name.
+		//	o/p:
+		//		Success	: The Column class pointer of the column.
+		//		Failure	: It returns NULL. The reason is NOT FOUND.
+		const Column* getColumn(string strColName);
 		
-		DB_RET addRecord(vector<DataUnit> vData){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		DB_RET deleteRecord(vector<DataUnit> vData){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		DB_RET deleteRecord(unsigned int uiIndex){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		int searchRecord(vector<DataUnit> vData){ cout << __FUNCTION__ << "()" << endl; return 0;}
-		DB_RET getRecord(unsigned int uiIndex, vector<DataUnit> *pvData){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
+		//	# Description:
+		//		Add a record in the table.
+		//	i/p:
+		//		vRecord	: The record. The record is a set of data which must store 
+		//				  in the vector with the order the same as the column order.
+		//	o/p:
+		//		DB_RET_SUCCESS			: Success
+		//		DB_RET_ERR_PROCEDURE	: Procedure incorrect.
+		//		DB_RET_ERR_PARAMETER	: Input parameter incorrect.
+		DB_RET addRecord(DATA_VAL *paRecord);
+		
+		//	# Description:
+		//		Search the record. The input vector must matches all of the data.
+		//	i/p:
+		//		uiCompareItemNum: The search sets number.
+		//		The set are a integer and a DATA_VAL.
+		//		The integer is the column index.
+		//		The DATA_VAL is the value.
+		//	o/p:
+		//		Success	: It returns the index of the record.
+		//		Failure	: It returns a number less than 0 which match the DB_RET.
+		//			DB_RET_ERR_PROCEDURE	: Procedure incorrect.
+		//			DB_RET_ERR_PARAMETER	: Input parameter incorrect.
+		int searchRecord(unsigned int uiCompareItemNum, ...);
+		int searchRecord(unsigned int uiCompareItemNum, va_list List);
+
+		//	# Description:
+		//		Delete the record. The input vector must matches all of the data.
+		//	i/p:
+		//		uiIndex	: The index of the record.
+		//	o/p:
+		//		DB_RET_SUCCESS									: Success
+		//		DB_RET_ERR_PROCEDURE[searchRecord()]			: Procedure incorrect.
+		//		DB_RET_ERR_PARAMETER[searchRecord()]			: Input parameter incorrect.
+		//		DB_RET_ERR_DB_NOT_FOUND[Column::deleteData()]	: Data not found.
+		DB_RET deleteRecord(int uiIndex);
+
+		//	# Description:
+		//		Get the record.
+		//	i/p:
+		//		uiIndex	: The index of the record.
+		//		paRecord: A array pointer that receive the record. The number of array
+		//				  must match the number of column.
+		//	o/p:
+		//		DB_RET_SUCCESS			: Success
+		//		DB_RET_ERR_DB_NOT_FOUND	: Data not found.
+		DB_RET getRecord(unsigned int uiIndex, DATA_VAL *paRecord);
+		
+		//	# Description:
+		//		Add a record in the table.
+		//	i/p:
+		//		None.
+		//	o/p:
+		//		The record number of the table.
+		unsigned int getRecordNum();
+
+		//	# Description:
+		//		Check the table is valid. Including which has primary and the 
+		//		column number is larger than 1.
+		//	i/p:
+		//		None.
+		//	o/p:
+		//		TRUE	: It's valid.
+		//		FALSE	: It's NOT valid.
+		bool valid();
 
 	private:
-		HANDLE				m_hDb;
-		string				m_strTableName;
-		unsigned int		m_uiPrimary;
-		vector<Column>		m_vCols;
-	};
+		HANDLE					m_hDb;
+		TABLE_ATTR				m_Attr;
+		vector<Column>			m_vCols;
+		DATA_VAL				*m_pastTempVal;		//	the temp record array.
+		struct 
+		{
+			struct
+			{
+				int				*pai;
+				DATA_VAL		*past;
+			}Item;
+			unsigned int		uiComparedNum;
+			int					iLast;
+		}m_Search;
+
+		//	# Description:
+		//		Reset the column.
+		//	i/p:
+		//		None.
+		//	o/p:
+		//		None.
+		void reset();
+	};//	End of Table class
 
 	class Db
 	{
 	public:
-		Db(){}
-		Db(string strDbName, string strPath){ cout << __FUNCTION__ << "()" << endl;}
-		DB_RET open(string strDbName, string strPath){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
+		Db();
+		Db(string strDbName, string strPath);
+		DB_RET open(string strDbName, string strPath);
 		
-		Table* addTable(string strTableName){ cout << __FUNCTION__ << "()" << endl; Table *t1 = new Table; return t1;}
-		Table* getTable(string strTableName){ cout << __FUNCTION__ << "()" << endl; Table *t1 = new Table; return t1;}
-		unsigned int searchTable(string strTableName){ cout << __FUNCTION__ << "()" << endl; return 1;}
+		DB_RET addTable(Table *pTable);
+		const Table* getTable(string strTableName);
+		int searchTable(string strTableName);
 		
-		Column* addColumn(string strTableName, string strColName, DATA_T DataType, bool bPrimaryKey, bool bNullable, string strForeignKey){ cout << __FUNCTION__ << "()" << endl; Column *c = new Column; return c;}
-		Column* getColumn(string strTableName, string strColName){ cout << __FUNCTION__ << "()" << endl; Column *c; return c;}
-		Column* searchColumn(string strTableName, string strColName){ cout << __FUNCTION__ << "()" << endl; Column *c; return c;}
-		
-		DB_RET addRecord(string strTableName, vector<DataUnit> vData){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		DB_RET deleteRecord(string strTableName, vector<DataUnit> vData){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		DB_RET deleteRecord(string strTableName, unsigned int uiIndex){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		int searchRecord(string strTableName, vector<DataUnit> vData){ cout << __FUNCTION__ << "()" << endl; return 0;}
-		DB_RET getRecord(string strTableName, unsigned int uiIndex, vector<DataUnit> *pvData){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
+		DB_RET addRecord(string strTableName, DATA_VAL *paRecord);
+		DB_RET deleteRecord(string strTableName, unsigned int uiIndex);
+		int searchRecord(string strTableName, unsigned int uiCompareItemNum, ...);
+		DB_RET getRecord(string strTableName, unsigned int uiIndex, DATA_VAL *paRecord);
 
 		DB_RET load(){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
-		DB_RET commit(){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
+		DB_RET commit();
+		DB_RET revert(){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
 
+		bool valid();
 	private:
 		string				m_strDbName;
 		string				m_strPath;
-		vector<Table>		m_vTable;
+		vector<Table>		m_vTables;
 	};
 }
 
