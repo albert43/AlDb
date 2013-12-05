@@ -58,7 +58,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	struct stat	stfStat;
 
 	int			iRet;
+	bool		bPk = true, bFk = true;
+
+	str.at(0) = DATA_T_INTEGER + '0';
+	str.at(1) = bPk + '0';
 	
+	string		strOld = "D:\\Dropbox\\develop\\temp\\ii";
+	string		strNew = "D:\\Dropbox\\develop\\temp\\ii.tbl";
+
+	iRet = rename(strOld.c_str(), strNew.c_str());
+	perror("rename:");
+	printf ("errno: %d\n", errno);
+
+	cout << "Format: " << str << endl;
 	iRet = _mkdir("D:\\Dropbox\\develop\\temp");
 	if (iRet == EEXIST);
 	perror("mkdir:");

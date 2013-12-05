@@ -1,6 +1,7 @@
 #include "Db.h"
 using namespace AlDb;
 
+/*
 DB_RET Pvoid2DataVal(DATA_T DataType, void *pData, DATA_VAL *pstData)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
@@ -57,6 +58,7 @@ DB_RET DataVal2Pvoid(DATA_T DataType, DATA_VAL *pstData, void *pData)
 
 	return DB_RET_SUCCESS;
 }
+*/
 
 /*****************************************************************************/
 /******************************* Column Class ********************************/
@@ -88,6 +90,9 @@ DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPri
 	if (strColName.length() == 0)
 		return DB_RET_ERR_PARAMETER;
 
+	if (strColName.length() > ALDB_NAME_LENGTH_MAX)
+		return DB_RET_ERR_DB_ATTRIBUTE;
+
 	//	Check primary key attribute.
 	if (bPriKey == true)
 	{
@@ -99,6 +104,9 @@ DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPri
 
 	if ((DataType < DATA_T_NONE) || (DataType >= DATA_T_END))
 		return DB_RET_ERR_PARAMETER;
+
+	if (strForeKey.length() > ALDB_NAME_LENGTH_MAX)
+		return DB_RET_ERR_DB_ATTRIBUTE;
 
 	m_hTable = hTable;
 	m_Attr.strColName = strColName;
@@ -287,6 +295,75 @@ DB_RET Column::getAttribute(COLUMN_ATTR *pAttr)
 
 	return DB_RET_SUCCESS;
 }
+
+//	Column Attribute Format:
+//		|Type|PK|FK-Name_Length|FK-Name|Column-Name|
+DB_RET Column::save(FILE *fp)
+{
+	DB_RET			Ret;
+	string			str = "";
+	unsigned int	uiData;
+	DATA_VAL		stData;
+	char			szNumeric[32];
+
+	//	Character 1: DataType
+	str.at(0) = m_Attr.DataType + '0';
+	
+	//	Character 2: Primary key
+	str.at(1) = m_Attr.bPriKey + '0';
+
+	//	Character 3-4: Foreign key name length.
+	str.at(2) = (m_Attr.strForeKey.length() / 10) + '0';
+	str.at(3) = (m_Attr.strForeKey.length() % 10) + '0';
+
+	//	Character 5-Length+5: Foreign key name
+	str.append(m_Attr.strForeKey);
+
+	//	Character X-TAB: Column name
+	str.append(m_Attr.strColName);
+
+	for (uiData = 0; uiData < m_vstDatas.size(); uiData++)
+	{
+		if ((Ret = getData(uiData, &stData)) != DB_RET_SUCCESS)
+			return Ret;
+		
+		switch (m_Attr.DataType)
+		{
+			case DATA_T_BOOL:
+			case DATA_T_INTEGER:
+				str.append("\t");
+				sprintf(szNumeric, "%d", stData.i);
+				str.append(szNumeric);
+				
+				break;
+			case DATA_T_DECIMAL:
+				str.append("\t");
+				sprintf(szNumeric, "%lf", stData.d);
+				str.append(szNumeric);
+				
+				break;
+			case DATA_T_TIME:
+				str.append("\t");
+				sprintf(szNumeric, "%lld", stData.t);
+				str.append(szNumeric);
+				
+				break;
+			case DATA_T_STRING:
+				str.append("\t");
+				str.append(stData.str);
+				
+				break;
+			default:
+				return DB_RET_ERR_INTERNAL;
+		}
+	}
+	str.append(NEW_LINE);
+
+	if (fwrite(str.c_str(), 1, str.length(), fp) != str.length())
+		return DB_RET_ERR_SYS_IO;
+
+	return DB_RET_SUCCESS;
+}
 //	End of Column class
 
 /*****************************************************************************/
@@ -335,6 +412,9 @@ DB_RET Table::open(HANDLE hDb, string strTableName)
 
 	if (strTableName.length() <= 0)
 		return DB_RET_ERR_PARAMETER;
+
+	if (strTableName.length() > ALDB_NAME_LENGTH_MAX)
+		return DB_RET_ERR_DB_ATTRIBUTE;
 
 	reset();
 	m_hDb = hDb;
@@ -611,6 +691,64 @@ bool Table::valid()
 	return true;
 }
 
+DB_RET Table::save(string strDbPath)
+{
+	DB_RET			Ret;
+	string			strTablePath;
+	FILE			*fp;
+	unsigned int	uiCol;
+
+	if (valid() == false)
+		return DB_RET_ERR_PROCEDURE;
+
+	strTablePath = strDbPath;
+	strTablePath.append("\\");
+	strTablePath.append(m_Attr.strTableName);
+	strTablePath.append(".temp");
+
+	fp = fopen(strTablePath.c_str(), "w");
+	if (fp == NULL)
+		return DB_RET_ERR_SYS_IO;
+
+	for (uiCol = 0; uiCol < m_vCols.size(); uiCol++)
+	{
+		if ((Ret = m_vCols.at(uiCol).save(fp)) != DB_RET_SUCCESS)
+		{
+			fclose(fp);
+			return Ret;
+		}
+	}
+
+	return DB_RET_SUCCESS;
+}
+
+DB_RET Table::commit(string strDbPath)
+{
+	DB_RET		Ret;
+	int			iRet;
+	string		strPathTemp, strPath;
+	
+	strPathTemp = strPath = strDbPath;
+
+	strPathTemp.append("\\");
+	strPathTemp.append(m_Attr.strTableName);
+	strPathTemp.append(".temp");
+
+	strPath.append("\\");
+	strPath.append(m_Attr.strTableName);
+	strPath.append(".tbl");
+
+	if ((iRet = rename(strPathTemp.c_str(), strPath.c_str())) != 0)
+	{
+		if (errno != ENOENT)
+			return DB_RET_ERR_SYS_IO;
+		else
+			return DB_RET_ERR_PROCEDURE;
+	}
+	
+	return DB_RET_SUCCESS;
+}
+
 //
 //	Private functions
 //
@@ -650,6 +788,9 @@ DB_RET Db::open(string strDbName, string strPath)
 
 	if (strDbName.length() <= 0)
 		return DB_RET_ERR_PARAMETER;
+
+	if (strDbName.length() > ALDB_NAME_LENGTH_MAX)
+		return DB_RET_ERR_DB_ATTRIBUTE;
 
 	//	Check the path is a valid file path.
 	iRet = stat(strPath.c_str(), &stfStat);
@@ -811,9 +952,12 @@ bool Db::valid()
 	return true;
 }
 
-DB_RET Db::commit()
+DB_RET Db::save()
 {
-	int		iRet;
+	DB_RET			Ret;
+	int				iRet;
+	string			strDbPath;
+	unsigned int	uiTable;
 
 	if (valid() == false)
 		return DB_RET_ERR_PROCEDURE;
@@ -826,6 +970,33 @@ DB_RET Db::commit()
 			return DB_RET_ERR_SYS_IO;
 	}
 
+	strDbPath = m_strPath;
+	strDbPath.append("\\");
+	strDbPath.append(m_strPath);
+	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
+	{
+		if ((Ret = m_vTables.at(uiTable).save(strDbPath)) != DB_RET_SUCCESS)
+			return Ret;
+	}
+
+	return DB_RET_SUCCESS;
+}
+
+DB_RET Db::commit()
+{
+	DB_RET			Ret;
+	int				iRet;
+	string			strDbPath;
+	unsigned int	uiTable;
+
+	strDbPath = m_strPath;
+	strDbPath.append("\\");
+	strDbPath.append(m_strPath);
+	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
+	{
+		if ((Ret = m_vTables.at(uiTable).commit(strDbPath)) != DB_RET_SUCCESS)
+			return Ret;
+	}
 
 	return DB_RET_SUCCESS;
 }

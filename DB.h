@@ -15,7 +15,12 @@ using namespace std;
 #define	VERSION_LIB_ALDB_MAJOR		1
 #define	VERSION_LIB_ALDB_MINOR		0
 #define	VERSION_LIB_ALDB_RELEASE	0
-#define	VERSION_LIB_ALDB_BUILD		2
+#define	VERSION_LIB_ALDB_BUILD		3
+
+#define	ALDB_NAME_LENGTH_MAX		32
+
+#define	NEW_LINE					"\r\n"
+
 
 namespace AlDb
 {
@@ -64,7 +69,7 @@ namespace AlDb
 	};
 //	DB_RET Pvoid2DataVal(DATA_T DataType, void *pData, DATA_VAL *pstData);
 //	DB_RET DataVal2Pvoid(DATA_T DataType, DATA_VAL *pstData, void *pData);
-		
+
 	struct COLUMN_ATTR
 	{
 		string			strColName;
@@ -178,6 +183,8 @@ namespace AlDb
 		void reset();
 
 		DB_RET getAttribute(COLUMN_ATTR *pAttr);
+
+		DB_RET save(FILE *fp);
 		
 	private:
 		HANDLE				m_hTable;
@@ -317,6 +324,9 @@ namespace AlDb
 		//		FALSE	: It's NOT valid.
 		bool valid();
 
+		DB_RET save(string strDbPath);
+		DB_RET commit(string strDbPath);
+
 	private:
 		HANDLE					m_hDb;
 		TABLE_ATTR				m_Attr;
@@ -359,6 +369,7 @@ namespace AlDb
 		DB_RET getRecord(string strTableName, unsigned int uiIndex, DATA_VAL *paRecord);
 
 		DB_RET load(){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
+		DB_RET save();
 		DB_RET commit();
 		DB_RET revert(){ cout << __FUNCTION__ << "()" << endl; return DB_RET_SUCCESS;}
 
