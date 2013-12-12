@@ -6,7 +6,9 @@ Release Note:
 		#	Db::save()
 		#	Table::commit()
 		#	Db::commit()
-
+	#	V-1.0.0.4
+		#	Change to record Table index for foreign key
+		#	Set max column number to 32 and don't use dynamic array for search.
 /////////////////////////////////////////////////////////////////////////////
 Develop notes:
 Class Data inherit Class ColumnAttr

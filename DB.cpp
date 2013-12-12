@@ -1,65 +1,6 @@
 #include "Db.h"
 using namespace AlDb;
 
-/*
-DB_RET Pvoid2DataVal(DATA_T DataType, void *pData, DATA_VAL *pstData)
-{
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
-	if ((pstData == NULL) || (pData == NULL))
-		return DB_RET_ERR_INTERNAL;
-
-	//	Assign pData to DATA_VAL
-	switch (DataType)
-	{
-		case DATA_T_BOOL:
-		case DATA_T_DECIMAL:
-		case DATA_T_INTEGER:
-		case DATA_T_TIME:
-			pstData->t = *(int *)pData;
-			break;
-		case DATA_T_STRING:
-			pstData->str = *(string *)pData;
-			break;
-		default:
-			return DB_RET_ERR_INTERNAL;
-	}
-
-	return DB_RET_SUCCESS;
-}
-
-DB_RET DataVal2Pvoid(DATA_T DataType, DATA_VAL *pstData, void *pData)
-{
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
-	if ((pstData == NULL) || (pData == NULL))
-		return DB_RET_ERR_PARAMETER;
-
-	switch (DataType)
-	{
-		case DATA_T_BOOL:
-			*(bool *)pData = pstData->b;
-			break;
-		case DATA_T_DECIMAL:
-			*(double *)pData = pstData->d;
-			break;
-		case DATA_T_INTEGER:
-			*(int *)pData = pstData->i;
-			break;
-		case DATA_T_TIME:
-			*(time_t *)pData = pstData->t;
-			break;
-		case DATA_T_STRING:
-			*(string *)pData = pstData->str;
-			break;
-		default:
-			return DB_RET_ERR_INTERNAL;
-	}
-
-	return DB_RET_SUCCESS;
-}
-*/
-
 /*****************************************************************************/
 /******************************* Column Class ********************************/
 /*****************************************************************************/
@@ -70,15 +11,15 @@ Column::Column()
 	reset();
 }
 
-Column::Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey)
+Column::Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
 
 	reset();
-	open(hTable, strColName, DataType, bPriKey, strForeKey);
+	open(hTable, strColName, DataType, bPriKey, iForeKey);
 }
 
-DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey)
+DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
 
@@ -98,21 +39,18 @@ DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPri
 	{
 		if (DataType == DATA_T_BOOL)
 			return DB_RET_ERR_DB_PRIMARY_KEY;
-		if (strForeKey.length() > 0)
+		if (iForeKey >= 0)
 			return DB_RET_ERR_DB_PRIMARY_KEY;
 	}
 
 	if ((DataType < DATA_T_NONE) || (DataType >= DATA_T_END))
 		return DB_RET_ERR_PARAMETER;
 
-	if (strForeKey.length() > ALDB_NAME_LENGTH_MAX)
-		return DB_RET_ERR_DB_ATTRIBUTE;
-
 	m_hTable = hTable;
 	m_Attr.strColName = strColName;
 	m_Attr.DataType = DataType;
 	m_Attr.bPriKey = bPriKey;
-	m_Attr.strForeKey = strForeKey;
+	m_Attr.iForeKey = iForeKey;
 
 	return DB_RET_SUCCESS;
 }
@@ -125,7 +63,7 @@ void Column::reset()
 	m_Attr.strColName.clear();
 	m_Attr.DataType = DATA_T_NONE;
 	m_Attr.bPriKey = false;
-	m_Attr.strForeKey.clear();
+	m_Attr.iForeKey = -1;
 	m_vstDatas.clear();
 
 	//	Initialize search varilabe.
@@ -297,7 +235,7 @@ DB_RET Column::getAttribute(COLUMN_ATTR *pAttr)
 }
 
 //	Column Attribute Format:
-//		|Type|PK|FK-Name_Length|FK-Name|Column-Name|
+//		|Type|PK|FK|Column-Name|
 DB_RET Column::save(FILE *fp)
 {
 	DB_RET			Ret;
@@ -312,12 +250,8 @@ DB_RET Column::save(FILE *fp)
 	//	Character 2: Primary key
 	str.at(1) = m_Attr.bPriKey + '0';
 
-	//	Character 3-4: Foreign key name length.
-	str.at(2) = (m_Attr.strForeKey.length() / 10) + '0';
-	str.at(3) = (m_Attr.strForeKey.length() % 10) + '0';
-
-	//	Character 5-Length+5: Foreign key name
-	str.append(m_Attr.strForeKey);
+	//	Character 3: Foreign key table index
+	str.at(2) = m_Attr.iForeKey + '0';
 
 	//	Character X-TAB: Column name
 	str.append(m_Attr.strColName);
@@ -384,28 +318,6 @@ Table::Table(HANDLE hDb, string strTableName)
 	open(hDb, strTableName);
 }
 
-Table::~Table()
-{
-	//	Release memory.
-	if (m_pastTempVal != NULL)
-	{
-		free(m_pastTempVal);
-		m_pastTempVal = NULL;
-	}
-
-	if (m_Search.Item.pai != NULL)
-	{
-		free(m_Search.Item.pai);
-		m_Search.Item.pai = NULL;
-	}
-
-	if (m_Search.Item.past != NULL)
-	{
-		delete [] m_Search.Item.past;
-		m_Search.Item.past = NULL;
-	}
-}
-
 DB_RET Table::open(HANDLE hDb, string strTableName)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
@@ -419,7 +331,6 @@ DB_RET Table::open(HANDLE hDb, string strTableName)
 	reset();
 	m_hDb = hDb;
 	m_Attr.strTableName = strTableName;
-
 	return DB_RET_SUCCESS;
 }
 
@@ -443,7 +354,7 @@ DB_RET Table::getAttribute(TABLE_ATTR *pAttr)
 	return DB_RET_SUCCESS;
 }
 
-DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, string strForeignKey)
+DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int iForeignKey)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
 
@@ -453,32 +364,15 @@ DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, st
 	if ((m_Attr.iPrimary != -1) && (bPrimaryKey == true))
 		return DB_RET_ERR_DB_ATTRIBUTE;
 
-	Ret = col.open(this, strColName, DataType, bPrimaryKey, strForeignKey);
+	Ret = col.open(this, strColName, DataType, bPrimaryKey, iForeignKey);
 	if (Ret != DB_RET_SUCCESS)
 		return Ret;
-
-	//	Change the size of the arrays.
-	m_pastTempVal = (DATA_VAL *)realloc(m_pastTempVal, sizeof(DATA_VAL) * (m_vCols.size() + 1));
-	if (m_pastTempVal == NULL)
-		return DB_RET_ERR_SYS_MEMORY;
-
-	m_Search.Item.pai = (int *)realloc(m_Search.Item.pai, sizeof(int) * (m_vCols.size() + 1));
-	if (m_Search.Item.pai == NULL)
-		return DB_RET_ERR_SYS_MEMORY;
-
-	//	string in DATA_VAL can not be new by realloc() function.
-	if (m_Search.Item.past != NULL)
-		delete [] m_Search.Item.past;
-	m_Search.Item.past = new DATA_VAL[m_vCols.size() + 1];
-
-	if (m_Search.Item.past == NULL)
-		return DB_RET_ERR_SYS_MEMORY;
 
 	m_vCols.push_back(col);
 	if (bPrimaryKey == true)
 		m_Attr.iPrimary = m_vCols.size() - 1;
-	if (strForeignKey.length() > 0)
-		m_Attr.vstrForeign.push_back(strForeignKey);
+	if (iForeignKey >= 0)
+		m_Attr.viForeign.push_back(iForeignKey);
 
 	return DB_RET_SUCCESS;
 }
@@ -588,11 +482,11 @@ int Table::searchRecord(unsigned int uiCompareItemNum, va_list List)
 		for (i = 0; i < (int)uiCompareItemNum; i++)
 		{
 			//	Get compared column index.
-			m_Search.Item.pai[i] = va_arg(List, int);
-			if ((m_Search.Item.pai[i] < 0) || (m_Search.Item.pai[i] > (int)m_vCols.size()))
+			m_Search.Item.ai[i] = va_arg(List, int);
+			if ((m_Search.Item.ai[i] < 0) || (m_Search.Item.ai[i] > (int)m_vCols.size()))
 				return DB_RET_ERR_PARAMETER;
 
-			m_Search.Item.past[i] = va_arg(List, DATA_VAL);
+			m_Search.Item.ast[i] = va_arg(List, DATA_VAL);
 		}
 
 		m_Search.iLast = -1;
@@ -604,7 +498,7 @@ int Table::searchRecord(unsigned int uiCompareItemNum, va_list List)
 	{
 		for (iItem = 0; iItem < (int)m_Search.uiComparedNum; iItem++)
 		{
-			bFound = m_vCols.at(m_Search.Item.pai[iItem]).compareData(i, &m_Search.Item.past[iItem]);
+			bFound = m_vCols.at(m_Search.Item.ai[iItem]).compareData(i, &m_Search.Item.ast[iItem]);
 			if (bFound == false)
 				break;
 		}
@@ -759,13 +653,10 @@ void Table::reset()
 	m_hDb = NULL;
 	m_Attr.strTableName = "";
 	m_Attr.iPrimary = -1;
-	m_Attr.vstrForeign.clear();
+	m_Attr.viForeign.clear();
 	m_vCols.clear();
 	//	Reset search variable arraies.
 	m_Search.iLast = -1;
-	m_Search.Item.pai = NULL;
-	m_Search.Item.past = NULL;
-	m_pastTempVal = NULL;
 }
 /*****************************************************************************/
 /********************************* Db Class **********************************/
@@ -826,12 +717,14 @@ DB_RET Db::addTable(Table *pTable)
 	//	Check foreign key.
 	if ((Ret = pTable->getAttribute(&Attr)) != DB_RET_SUCCESS)
 		return Ret;
-
-	for (ui = 0; ui < Attr.vstrForeign.size(); ui++)
+	
+	for (ui = 0; ui < Attr.viForeign.size(); ui++)
 	{
-		if (searchTable(Attr.vstrForeign.at(ui)) < 0)
+		if (Attr.viForeign.at(ui) >= m_vTables.size())
 			return DB_RET_ERR_PARAMETER;
 	}
+
+	m_vTables.push_back(*pTable);
 
 	return DB_RET_SUCCESS;
 }
@@ -925,8 +818,10 @@ DB_RET Db::getRecord(string strTableName, unsigned int uiIndex, DATA_VAL *paReco
 
 bool Db::valid()
 {
+	DB_RET			Ret;
 	TABLE_ATTR		Attr;
 	unsigned int	uiTable, uiForeignKey;
+	unsigned int	ui;
 
 	if ((m_strDbName.length() <= 0) || (m_strPath.length() <= 0))
 		return false;
@@ -941,10 +836,13 @@ bool Db::valid()
 		if (m_vTables.at(uiTable).getAttribute(&Attr) != DB_RET_SUCCESS)
 			return false;
 		
-		//	Check the foreign table is exist.
-		for (uiForeignKey = 0; uiForeignKey < Attr.vstrForeign.size(); uiForeignKey++)
+		//	Check foreign key.
+		if ((Ret = m_vTables.at(uiTable).getAttribute(&Attr)) != DB_RET_SUCCESS)
+			return Ret;
+	
+		for (ui = 0; ui < Attr.viForeign.size(); ui++)
 		{
-			if (searchTable(Attr.vstrForeign.at(uiForeignKey)) < 0)
+			if (Attr.viForeign.at(ui) >= m_vTables.size())
 				return false;
 		}
 	}

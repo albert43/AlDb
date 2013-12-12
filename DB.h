@@ -15,9 +15,10 @@ using namespace std;
 #define	VERSION_LIB_ALDB_MAJOR		1
 #define	VERSION_LIB_ALDB_MINOR		0
 #define	VERSION_LIB_ALDB_RELEASE	0
-#define	VERSION_LIB_ALDB_BUILD		3
+#define	VERSION_LIB_ALDB_BUILD		4
 
 #define	ALDB_NAME_LENGTH_MAX		32
+#define	ALDB_COLUMN_NUM_MAX			32
 
 #define	NEW_LINE					"\r\n"
 
@@ -67,22 +68,20 @@ namespace AlDb
 		};
 		string			str;
 	};
-//	DB_RET Pvoid2DataVal(DATA_T DataType, void *pData, DATA_VAL *pstData);
-//	DB_RET DataVal2Pvoid(DATA_T DataType, DATA_VAL *pstData, void *pData);
 
 	struct COLUMN_ATTR
 	{
 		string			strColName;
 		DATA_T			DataType;
 		bool			bPriKey;
-		string			strForeKey;
+		int				iForeKey;
 	};
 
 	class Column
 	{
 	public:
 		Column();
-		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey);
+		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey);
 		
 		//	# Description:
 		//		Open a Column class.
@@ -96,7 +95,7 @@ namespace AlDb
 		//		DB_RET_SUCCESS				: Success
 		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
-		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey);
+		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey);
 
 		//	# Description:
 		//		Add a data in column.
@@ -201,7 +200,7 @@ namespace AlDb
 	{
 		string				strTableName;
 		int					iPrimary;
-		vector<string>		vstrForeign;
+		vector<int>			viForeign;
 	};
 	
 	class Table
@@ -209,7 +208,6 @@ namespace AlDb
 	public:
 		Table();
 		Table(HANDLE hDb, string strTableName);
-		~Table();
 
 		//	# Description:
 		//		pOen a Table class.
@@ -238,7 +236,7 @@ namespace AlDb
 		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
 		//		DB_RET_ERR_DB_FULL			: The column is full.
-		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, string strForeignKey);
+		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int iForeignKey);
 		
 		//	# Description:
 		//		Search the column.
@@ -331,13 +329,12 @@ namespace AlDb
 		HANDLE					m_hDb;
 		TABLE_ATTR				m_Attr;
 		vector<Column>			m_vCols;
-		DATA_VAL				*m_pastTempVal;		//	the temp record array.
 		struct 
 		{
 			struct
 			{
-				int				*pai;
-				DATA_VAL		*past;
+				int				ai[ALDB_COLUMN_NUM_MAX];
+				DATA_VAL		ast[ALDB_COLUMN_NUM_MAX];
 			}Item;
 			unsigned int		uiComparedNum;
 			int					iLast;
