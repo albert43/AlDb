@@ -15,7 +15,7 @@ using namespace std;
 #define	VERSION_LIB_ALDB_MAJOR		1
 #define	VERSION_LIB_ALDB_MINOR		0
 #define	VERSION_LIB_ALDB_RELEASE	0
-#define	VERSION_LIB_ALDB_BUILD		4
+#define	VERSION_LIB_ALDB_BUILD		5
 
 #define	ALDB_NAME_LENGTH_MAX		32
 #define	ALDB_COLUMN_NUM_MAX			32
@@ -208,7 +208,7 @@ namespace AlDb
 	public:
 		Table();
 		Table(HANDLE hDb, string strTableName);
-
+		~Table();
 		//	# Description:
 		//		pOen a Table class.
 		//	i/p:
@@ -354,6 +354,7 @@ namespace AlDb
 	public:
 		Db();
 		Db(string strDbName, string strPath);
+		~Db();
 		DB_RET open(string strDbName, string strPath);
 		
 		DB_RET addTable(Table *pTable);
@@ -374,7 +375,7 @@ namespace AlDb
 	private:
 		string				m_strDbName;
 		string				m_strPath;
-		vector<Table>		m_vTables;
+		vector<void *>		m_vTables;
 	};
 }
 

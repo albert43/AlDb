@@ -9,6 +9,10 @@ Release Note:
 	#	V-1.0.0.4
 		#	Change to record Table index for foreign key
 		#	Set max column number to 32 and don't use dynamic array for search.
+	#	V-1.0.0.5
+		#	Change vector type from "Table" to "void *" for DB::m_vTables
+		#	Debug mode will crash when the program finish.
+			Release mode is fine.
 /////////////////////////////////////////////////////////////////////////////
 Develop notes:
 Class Data inherit Class ColumnAttr

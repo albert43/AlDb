@@ -318,6 +318,10 @@ Table::Table(HANDLE hDb, string strTableName)
 	open(hDb, strTableName);
 }
 
+Table::~Table()
+{
+}
+
 DB_RET Table::open(HANDLE hDb, string strTableName)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
@@ -670,6 +674,11 @@ Db::Db(string strDbName, string strPath)
 	open(strDbName, strPath);
 }
 
+Db::~Db()
+{
+	m_vTables.clear();
+}
+
 DB_RET Db::open(string strDbName, string strPath)
 {
 	cout << __FUNCTION__ << "():" << __LINE__ << endl;
@@ -724,7 +733,7 @@ DB_RET Db::addTable(Table *pTable)
 			return DB_RET_ERR_PARAMETER;
 	}
 
-	m_vTables.push_back(*pTable);
+	m_vTables.push_back((void *)pTable);
 
 	return DB_RET_SUCCESS;
 }
@@ -750,7 +759,7 @@ int Db::searchTable(string strTableName)
 
 	for (ui = 0; ui < m_vTables.size(); ui++)
 	{
-		if ((Ret = m_vTables.at(ui).getAttribute(&Attr)) != DB_RET_SUCCESS)
+		if ((Ret = ((Table *)(m_vTables.at(ui)))->getAttribute(&Attr)) != DB_RET_SUCCESS)
 			return (int)Ret;
 		if (Attr.strTableName.compare(strTableName) == 0)
 			return (int)ui;
@@ -769,7 +778,7 @@ DB_RET Db::addRecord(string strTableName, DATA_VAL *paRecord)
 	if ((iTable = searchTable(strTableName)) < 0)
 		return (DB_RET)iTable;
 
-	return m_vTables.at(iTable).addRecord(paRecord);
+	return ((Table *)(m_vTables.at(iTable)))->addRecord(paRecord);
 }
 
 DB_RET Db::deleteRecord(string strTableName, unsigned int uiIndex)
@@ -782,7 +791,7 @@ DB_RET Db::deleteRecord(string strTableName, unsigned int uiIndex)
 	if ((iTable = searchTable(strTableName)) < 0)
 		return (DB_RET)iTable;
 
-	return m_vTables.at(iTable).deleteRecord(uiIndex);
+	return ((Table *)(m_vTables.at(iTable)))->deleteRecord(uiIndex);
 }
 
 int Db::searchRecord(string strTableName, unsigned int uiCompareItemNum, ...)
@@ -797,7 +806,7 @@ int Db::searchRecord(string strTableName, unsigned int uiCompareItemNum, ...)
 		return iTable;
 
 	va_start(List, uiCompareItemNum);
-	iRecord = m_vTables.at(iTable).searchRecord(uiCompareItemNum, List);
+	iRecord = ((Table *)(m_vTables.at(iTable)))->searchRecord(uiCompareItemNum, List);
 	va_end(List);
 
 	return iRecord;
@@ -813,7 +822,7 @@ DB_RET Db::getRecord(string strTableName, unsigned int uiIndex, DATA_VAL *paReco
 	if ((iTable = searchTable(strTableName)) < 0)
 		return (DB_RET)iTable;
 
-	return m_vTables.at(iTable).getRecord(uiIndex, paRecord);
+	return ((Table *)(m_vTables.at(iTable)))->getRecord(uiIndex, paRecord);
 }
 
 bool Db::valid()
@@ -831,13 +840,13 @@ bool Db::valid()
 
 	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
 	{
-		if (m_vTables.at(uiTable).valid() == false)
+		if (((Table *)(m_vTables.at(uiTable)))->valid() == false)
 			return false;
-		if (m_vTables.at(uiTable).getAttribute(&Attr) != DB_RET_SUCCESS)
+		if (((Table *)(m_vTables.at(uiTable)))->getAttribute(&Attr) != DB_RET_SUCCESS)
 			return false;
 		
 		//	Check foreign key.
-		if ((Ret = m_vTables.at(uiTable).getAttribute(&Attr)) != DB_RET_SUCCESS)
+		if ((Ret = ((Table *)(m_vTables.at(uiTable)))->getAttribute(&Attr)) != DB_RET_SUCCESS)
 			return Ret;
 	
 		for (ui = 0; ui < Attr.viForeign.size(); ui++)
@@ -873,7 +882,7 @@ DB_RET Db::save()
 	strDbPath.append(m_strPath);
 	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
 	{
-		if ((Ret = m_vTables.at(uiTable).save(strDbPath)) != DB_RET_SUCCESS)
+		if ((Ret = ((Table *)(m_vTables.at(uiTable)))->save(strDbPath)) != DB_RET_SUCCESS)
 			return Ret;
 	}
 
@@ -892,7 +901,7 @@ DB_RET Db::commit()
 	strDbPath.append(m_strPath);
 	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
 	{
-		if ((Ret = m_vTables.at(uiTable).commit(strDbPath)) != DB_RET_SUCCESS)
+		if ((Ret = ((Table *)(m_vTables.at(uiTable)))->commit(strDbPath)) != DB_RET_SUCCESS)
 			return Ret;
 	}
 
