@@ -15,7 +15,7 @@ using namespace std;
 #define	VERSION_LIB_ALDB_MAJOR		1
 #define	VERSION_LIB_ALDB_MINOR		0
 #define	VERSION_LIB_ALDB_RELEASE	0
-#define	VERSION_LIB_ALDB_BUILD		3
+#define	VERSION_LIB_ALDB_BUILD		6
 
 #define	ALDB_NAME_LENGTH_MAX		32
 
@@ -38,7 +38,7 @@ namespace AlDb
 		DB_RET_ERR_DB_TYPE,				//	Incorrect data type.
 		DB_RET_ERR_SYS = -500,
 		DB_RET_ERR_SYS_MEMORY,			//	System memory error.
-		DB_RET_ERR_SYS_IO,			//	System i/o error.
+		DB_RET_ERR_SYS_IO,				//	System i/o error.
 		DB_RET_ERR_PARAMETER,			//	Input parameter incorrect
 		DB_RET_ERR_PROCEDURE,			//	Procedure incorrect.
 		DB_RET_ERR_INTERNAL,
@@ -75,14 +75,14 @@ namespace AlDb
 		string			strColName;
 		DATA_T			DataType;
 		bool			bPriKey;
-		string			strForeKey;
+		int			strForeKey;
 	};
 
 	class Column
 	{
 	public:
 		Column();
-		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey);
+		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int strForeKey);
 		
 		//	# Description:
 		//		Open a Column class.
@@ -96,7 +96,7 @@ namespace AlDb
 		//		DB_RET_SUCCESS				: Success
 		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
-		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, string strForeKey);
+		DB_RET open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int strForeKey);
 
 		//	# Description:
 		//		Add a data in column.
@@ -201,7 +201,7 @@ namespace AlDb
 	{
 		string				strTableName;
 		int					iPrimary;
-		vector<string>		vstrForeign;
+		vector<int>			vstrForeign;
 	};
 	
 	class Table
@@ -238,7 +238,7 @@ namespace AlDb
 		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
 		//		DB_RET_ERR_DB_FULL			: The column is full.
-		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, string strForeignKey);
+		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int strForeignKey);
 		
 		//	# Description:
 		//		Search the column.
@@ -336,8 +336,8 @@ namespace AlDb
 		{
 			struct
 			{
-				int				*pai;
-				DATA_VAL		*past;
+				int				pai[32];
+				DATA_VAL		past[32];
 			}Item;
 			unsigned int		uiComparedNum;
 			int					iLast;
@@ -357,6 +357,7 @@ namespace AlDb
 	public:
 		Db();
 		Db(string strDbName, string strPath);
+		~Db();
 		DB_RET open(string strDbName, string strPath);
 		
 		DB_RET addTable(Table *pTable);
@@ -377,7 +378,7 @@ namespace AlDb
 	private:
 		string				m_strDbName;
 		string				m_strPath;
-		vector<Table>		m_vTables;
+		vector<void *>		m_vTables;
 	};
 }
 

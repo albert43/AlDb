@@ -5,18 +5,16 @@
 #include "DB.h"
 using namespace AlDb;
 
-void TestTable()
+void TestTable(Db dbEngLab, Table *ptblTeacher)
 {
 	DB_RET	Ret;
-	Db		dbEngLab;
-	Table	tblTeacher;
 	Column	col;
 
 	//	Create table - teacher
-	Ret = tblTeacher.open(&dbEngLab, "teacher");
-	Ret = tblTeacher.addColumn("id", DATA_T_INTEGER, true, "");
-	Ret = tblTeacher.addColumn("name_ch", DATA_T_STRING, false, "");
-	Ret = tblTeacher.addColumn("on_abroad", DATA_T_TIME, false, "");
+	Ret = ptblTeacher->open(&dbEngLab, "teacher");
+	Ret = ptblTeacher->addColumn("id", DATA_T_INTEGER, true, -1);
+	Ret = ptblTeacher->addColumn("name_ch", DATA_T_STRING, false, -1);
+	Ret = ptblTeacher->addColumn("on_abroad", DATA_T_TIME, false, -1);
 	
 	//	Add records
 	DATA_VAL	aRec[3];
@@ -31,24 +29,32 @@ void TestTable()
 		aRec[0].i = iKey[i];
 		aRec[1].str = strName[i];
 		aRec[2].t = tmOnAbroad[i];
-		Ret = tblTeacher.addRecord(aRec);
+		Ret = ptblTeacher->addRecord(aRec);
 		if (Ret != DB_RET_SUCCESS)
 			cout << "Failure" << endl;
 	}
 
 	//	Test getRecord()
-	Ret = tblTeacher.getRecord(3, aRec);
-	Ret = tblTeacher.getRecord(7, aRec);
+	Ret = ptblTeacher->getRecord(3, aRec);
+	Ret = ptblTeacher->getRecord(7, aRec);
 
 	//	Test searchRecord()
 	memset (aRec, 0, sizeof(DATA_VAL) * 3);
 	aRec[1].t = 1385793344;
-	i = tblTeacher.searchRecord(1, 2, aRec[1]);
+	i = ptblTeacher->searchRecord(1, 2, aRec[1]);
 
 	//	Test deleteRecord()
-	Ret = tblTeacher.deleteRecord(3);
-	i = tblTeacher.searchRecord(1, 0, aRec[1]);
-	
+	Ret = ptblTeacher->deleteRecord(3);
+	i = ptblTeacher->searchRecord(1, 0, aRec[1]);
+}
+
+void testDb(Db dbEngLab, Table *ptblTeacher)
+{
+	DB_RET		Ret;
+
+	Ret = dbEngLab.open("EngLab", "D:\\Dropbox\\develop");
+	Ret = dbEngLab.addTable(ptblTeacher);
+//	Ret = dbEngLab.commit();
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -59,11 +65,14 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	int			iRet;
 	bool		bPk = true, bFk = true;
+	Db			dbEngLab;
+	Table       tblTeacher;
 
+	cout << "Table class size:" << sizeof(Table) << endl;
 	str.at(0) = DATA_T_INTEGER + '0';
 	str.at(1) = bPk + '0';
 	
-	string		strOld = "D:\\Dropbox\\develop\\temp\\ii";
+	string		strOld = "D:\\Dropbox\\develop\\";
 	string		strNew = "D:\\Dropbox\\develop\\temp\\ii.tbl";
 
 	iRet = rename(strOld.c_str(), strNew.c_str());
@@ -80,7 +89,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		cout << "Folder" << endl;
 
 	time(&t);
-	TestTable();
-	
+	TestTable(dbEngLab, &tblTeacher);
+	testDb(dbEngLab, &tblTeacher);
+
 	return 0;
 }

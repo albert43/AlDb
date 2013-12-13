@@ -6,7 +6,13 @@ Release Note:
 		#	Db::save()
 		#	Table::commit()
 		#	Db::commit()
-
+	#	V-1.0.0.6
+		#	Release date: 
+		#	Enhancements and Improvements:
+		#	Bugfix:
+			#	Db::commit() doesn't return error when the Db doesn't have name and path.
+			#	Db::addTable() doesn't finish.
+			#	Resolved destructor crash issue.
 /////////////////////////////////////////////////////////////////////////////
 Develop notes:
 Class Data inherit Class ColumnAttr
