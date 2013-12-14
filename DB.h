@@ -15,12 +15,13 @@ using namespace std;
 #define	VERSION_LIB_ALDB_MAJOR		1
 #define	VERSION_LIB_ALDB_MINOR		0
 #define	VERSION_LIB_ALDB_RELEASE	0
-#define	VERSION_LIB_ALDB_BUILD		5
+#define	VERSION_LIB_ALDB_BUILD		8
 
 #define	ALDB_NAME_LENGTH_MAX		32
 #define	ALDB_COLUMN_NUM_MAX			32
+#define	ALDB_BUFFER_SIZE			1024
 
-#define	NEW_LINE					"\r\n"
+#define	NEW_LINE					"\n"
 
 
 namespace AlDb
@@ -184,6 +185,7 @@ namespace AlDb
 		DB_RET getAttribute(COLUMN_ATTR *pAttr);
 
 		DB_RET save(FILE *fp);
+		DB_RET load(FILE *fp);
 		
 	private:
 		HANDLE				m_hTable;

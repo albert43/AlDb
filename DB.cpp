@@ -6,23 +6,17 @@ using namespace AlDb;
 /*****************************************************************************/
 Column::Column()
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-	
 	reset();
 }
 
 Column::Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	reset();
 	open(hTable, strColName, DataType, bPriKey, iForeKey);
 }
 
 DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	//	hTable can NOT be set when adding in table.
 	//	Because there's no public function to set the handle.
 	if (hTable == NULL)
@@ -57,8 +51,6 @@ DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPri
 		
 void Column::reset()
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	m_hTable = NULL;
 	m_Attr.strColName.clear();
 	m_Attr.DataType = DATA_T_NONE;
@@ -73,8 +65,6 @@ void Column::reset()
 
 DB_RET Column::addData(DATA_VAL *pData)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	DB_RET			Ret = DB_RET_SUCCESS;
 	unsigned int	uiData;
 	int				iIndex;
@@ -114,8 +104,6 @@ DB_RET Column::addData(DATA_VAL *pData)
 
 int Column::searchData(DATA_VAL *pData, bool bContiune)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-	
 	unsigned int	ui;
 
 	if (bContiune == false)
@@ -142,8 +130,6 @@ int Column::searchData(DATA_VAL *pData, bool bContiune)
 
 DB_RET Column::deleteData(DATA_VAL *pData)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	int		iIndex;
 
 	iIndex = searchData(pData, false);
@@ -158,8 +144,6 @@ DB_RET Column::deleteData(DATA_VAL *pData)
 
 DB_RET Column::deleteData(unsigned int uiIndex)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	if (uiIndex >= m_vstDatas.size())
 		return DB_RET_ERR_DB_NOT_FOUND;
 
@@ -170,8 +154,6 @@ DB_RET Column::deleteData(unsigned int uiIndex)
 
 DB_RET Column::getData(unsigned int uiIndex, DATA_VAL *pData)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	if (pData == NULL)
 		return DB_RET_ERR_PARAMETER;
 
@@ -185,8 +167,6 @@ DB_RET Column::getData(unsigned int uiIndex, DATA_VAL *pData)
 
 bool Column::compareData(unsigned int uiIndex, DATA_VAL *pData)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	if (uiIndex > m_vstDatas.size())
 		return false;
 
@@ -219,8 +199,6 @@ bool Column::compareData(unsigned int uiIndex, DATA_VAL *pData)
 
 unsigned int Column::getDataNumber()
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	return m_vstDatas.size();
 }
 
@@ -239,10 +217,12 @@ DB_RET Column::getAttribute(COLUMN_ATTR *pAttr)
 DB_RET Column::save(FILE *fp)
 {
 	DB_RET			Ret;
-	string			str = "";
+	string			str;
 	unsigned int	uiData;
 	DATA_VAL		stData;
 	char			szNumeric[32];
+
+	str.resize(3);
 
 	//	Character 1: DataType
 	str.at(0) = m_Attr.DataType + '0';
@@ -298,6 +278,18 @@ DB_RET Column::save(FILE *fp)
 
 	return DB_RET_SUCCESS;
 }
+
+DB_RET Column::load(FILE *fp)
+{
+	char	szBuf[ALDB_BUFFER_SIZE];
+	int		nRead;
+
+	if ((nRead = fread(szBuf, 1, ALDB_BUFFER_SIZE, fp)) != 0)
+		return DB_RET_ERR_SYS_IO;
+
+
+	return DB_RET_SUCCESS;
+}
 //	End of Column class
 
 /*****************************************************************************/
@@ -305,15 +297,11 @@ DB_RET Column::save(FILE *fp)
 /*****************************************************************************/
 Table::Table()
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	reset();
 }
 
 Table::Table(HANDLE hDb, string strTableName)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-	
 	reset();
 	open(hDb, strTableName);
 }
@@ -324,8 +312,6 @@ Table::~Table()
 
 DB_RET Table::open(HANDLE hDb, string strTableName)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	if (strTableName.length() <= 0)
 		return DB_RET_ERR_PARAMETER;
 
@@ -360,8 +346,6 @@ DB_RET Table::getAttribute(TABLE_ATTR *pAttr)
 
 DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int iForeignKey)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	DB_RET	Ret = DB_RET_SUCCESS;
 	Column	col;
 
@@ -383,8 +367,6 @@ DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, in
 
 int Table::searchColumn(string strColName)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	COLUMN_ATTR		Attr;
 	int				iIndex = -1;
 
@@ -403,8 +385,6 @@ int Table::searchColumn(string strColName)
 
 const Column* Table::getColumn(string strColName)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	int	iIndex;
 
 	if ((iIndex = searchColumn(strColName)) < 0)
@@ -415,8 +395,6 @@ const Column* Table::getColumn(string strColName)
 
 DB_RET Table::addRecord(DATA_VAL *paRecord)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	DB_RET			Ret = DB_RET_SUCCESS;
 	COLUMN_ATTR		ColAttr;
 	unsigned int	uiParamNum = 0, ui;
@@ -461,8 +439,6 @@ int Table::searchRecord(unsigned int uiCompareItemNum, ...)
 
 int Table::searchRecord(unsigned int uiCompareItemNum, va_list List)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	int				nDataNum;
 	bool			bFound = true;
 	int				i, iItem;
@@ -520,8 +496,6 @@ int Table::searchRecord(unsigned int uiCompareItemNum, va_list List)
 
 DB_RET Table::deleteRecord(int uiIndex)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	DB_RET			Ret = DB_RET_SUCCESS;
 	unsigned int	ui;
 
@@ -542,8 +516,6 @@ DB_RET Table::deleteRecord(int uiIndex)
 
 DB_RET Table::getRecord(unsigned int uiIndex, DATA_VAL *paRecord)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	DB_RET			Ret = DB_RET_SUCCESS;
 	COLUMN_ATTR		Attr;
 	unsigned int	ui;
@@ -571,15 +543,11 @@ unsigned int Table::getRecordNum()
 	if (valid() == false)
 		return 0;
 
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	return m_vCols.at(0).getDataNumber();
 }
 
 bool Table::valid()
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	if (m_Attr.strTableName.length() <= 0)
 		return false;
 
@@ -616,6 +584,7 @@ DB_RET Table::save(string strDbPath)
 			return Ret;
 		}
 	}
+	fclose(fp);
 
 	return DB_RET_SUCCESS;
 }
@@ -636,10 +605,14 @@ DB_RET Table::commit(string strDbPath)
 	strPath.append(m_Attr.strTableName);
 	strPath.append(".tbl");
 
+	remove(strPath.c_str());
 	if ((iRet = rename(strPathTemp.c_str(), strPath.c_str())) != 0)
 	{
 		if (errno != ENOENT)
+		{
+			perror("rename:");
 			return DB_RET_ERR_SYS_IO;
+		}
 		else
 			return DB_RET_ERR_PROCEDURE;
 	}
@@ -652,8 +625,6 @@ DB_RET Table::commit(string strDbPath)
 //
 void Table::reset()
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	m_hDb = NULL;
 	m_Attr.strTableName = "";
 	m_Attr.iPrimary = -1;
@@ -681,8 +652,6 @@ Db::~Db()
 
 DB_RET Db::open(string strDbName, string strPath)
 {
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
 	int			iRet;
 	struct stat	stfStat;
 
@@ -870,16 +839,17 @@ DB_RET Db::save()
 		return DB_RET_ERR_PROCEDURE;
 
 	//	Check db folder
-	if ((iRet = _mkdir(m_strPath.c_str())) != 0)
+	strDbPath = m_strPath;
+	strDbPath.append("\\");
+	strDbPath.append(m_strDbName);
+	if ((iRet = _mkdir(strDbPath.c_str())) != 0)
 	{
 		//	EEXIST: File exist.
 		if (errno != EEXIST)
 			return DB_RET_ERR_SYS_IO;
+		perror("mkdir:");
 	}
 
-	strDbPath = m_strPath;
-	strDbPath.append("\\");
-	strDbPath.append(m_strPath);
 	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
 	{
 		if ((Ret = ((Table *)(m_vTables.at(uiTable)))->save(strDbPath)) != DB_RET_SUCCESS)
@@ -896,9 +866,12 @@ DB_RET Db::commit()
 	string			strDbPath;
 	unsigned int	uiTable;
 
+	if (valid() == false)
+		return DB_RET_ERR_PROCEDURE;
+
 	strDbPath = m_strPath;
 	strDbPath.append("\\");
-	strDbPath.append(m_strPath);
+	strDbPath.append(m_strDbName);
 	for (uiTable = 0; uiTable < m_vTables.size(); uiTable++)
 	{
 		if ((Ret = ((Table *)(m_vTables.at(uiTable)))->commit(strDbPath)) != DB_RET_SUCCESS)

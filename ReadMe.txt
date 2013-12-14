@@ -13,13 +13,13 @@ Release Note:
 		#	Change vector type from "Table" to "void *" for DB::m_vTables
 		#	Debug mode will crash when the program finish.
 			Release mode is fine.
+	#	V-1.0.0.8
+		#	Db::commit() doesn't return error when the Db doesn't have name and path.
+		#	save and commit functions are tested.
+		#	Remove debug info "cout << __FUNCTION__ << "():" << __LINE__ << endl;"
+		#	Column::load() has not finished.
+
 /////////////////////////////////////////////////////////////////////////////
-Develop notes:
-Class Data inherit Class ColumnAttr
-Class Column inherit Class Data
-
-
-
 AlDb is a database engine. It provide a uncompressed database sysytem, all of the data
 are stored in text base files. Table's data store in 
 
@@ -31,7 +31,10 @@ DataUnit is a basic data unit. All the data must add in or get from database thr
 	commit(): Memory = Table_new.tbl and Table.temp not exist.
 	revert(): Memory = Table_old.tbl and Table_new not exist.
 	load()	: Memory = Table_old.tbl and Table_new not exist.
-
+	load --> save --> commit
+	  ^       | 
+	  |       |
+	   -------
 #	Known issue.
 	#	The lower layer data can not be accessed by upper layer class.
 		AlDb::Column::m_vDatas can not be accessed by AlDb::Table
@@ -40,6 +43,8 @@ DataUnit is a basic data unit. All the data must add in or get from database thr
 		If the initial value isn't NULL the code will free it.
 		(done)
 	#	m_Search.Item.past can not be freed in deconstructor.
+		#	Because string can not be allocate by malloc()
+	#	Debug mode will crash in vector destructor().
 
 #	To-do...
 	#	Add function to get column attributes and change column attributes member variable

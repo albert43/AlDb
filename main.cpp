@@ -54,7 +54,8 @@ void testDb(Db dbEngLab, Table *ptblTeacher)
 
 	Ret = dbEngLab.open("EngLab", "D:\\Dropbox\\develop");
 	Ret = dbEngLab.addTable(ptblTeacher);
-//	Ret = dbEngLab.commit();
+	Ret = dbEngLab.save();
+	Ret = dbEngLab.commit();
 }
 
 int _tmain(int argc, _TCHAR* argv[])
