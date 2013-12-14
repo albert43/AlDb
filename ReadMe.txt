@@ -13,6 +13,10 @@ Release Note:
 			#	Db::commit() doesn't return error when the Db doesn't have name and path.
 			#	Db::addTable() doesn't finish.
 			#	Resolved destructor crash issue.
+	#	V-1.0.0.7
+		#	Change variable name.
+			#	strForeign to iForeign
+			#	vstrForeign to viForeign
 /////////////////////////////////////////////////////////////////////////////
 Develop notes:
 Class Data inherit Class ColumnAttr

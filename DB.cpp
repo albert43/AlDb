@@ -1,65 +1,6 @@
 #include "Db.h"
 using namespace AlDb;
 
-/*
-DB_RET Pvoid2DataVal(DATA_T DataType, void *pData, DATA_VAL *pstData)
-{
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
-	if ((pstData == NULL) || (pData == NULL))
-		return DB_RET_ERR_INTERNAL;
-
-	//	Assign pData to DATA_VAL
-	switch (DataType)
-	{
-		case DATA_T_BOOL:
-		case DATA_T_DECIMAL:
-		case DATA_T_INTEGER:
-		case DATA_T_TIME:
-			pstData->t = *(int *)pData;
-			break;
-		case DATA_T_STRING:
-			pstData->str = *(string *)pData;
-			break;
-		default:
-			return DB_RET_ERR_INTERNAL;
-	}
-
-	return DB_RET_SUCCESS;
-}
-
-DB_RET DataVal2Pvoid(DATA_T DataType, DATA_VAL *pstData, void *pData)
-{
-	cout << __FUNCTION__ << "():" << __LINE__ << endl;
-
-	if ((pstData == NULL) || (pData == NULL))
-		return DB_RET_ERR_PARAMETER;
-
-	switch (DataType)
-	{
-		case DATA_T_BOOL:
-			*(bool *)pData = pstData->b;
-			break;
-		case DATA_T_DECIMAL:
-			*(double *)pData = pstData->d;
-			break;
-		case DATA_T_INTEGER:
-			*(int *)pData = pstData->i;
-			break;
-		case DATA_T_TIME:
-			*(time_t *)pData = pstData->t;
-			break;
-		case DATA_T_STRING:
-			*(string *)pData = pstData->str;
-			break;
-		default:
-			return DB_RET_ERR_INTERNAL;
-	}
-
-	return DB_RET_SUCCESS;
-}
-*/
-
 /*****************************************************************************/
 /******************************* Column Class ********************************/
 /*****************************************************************************/
@@ -70,13 +11,13 @@ Column::Column()
 	reset();
 }
 
-Column::Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int strForeKey)
+Column::Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey)
 {
 	reset();
-	open(hTable, strColName, DataType, bPriKey, strForeKey);
+	open(hTable, strColName, DataType, bPriKey, iForeKey);
 }
 
-DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int strForeKey)
+DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey)
 {
 	//	hTable can NOT be set when adding in table.
 	//	Because there's no public function to set the handle.
@@ -94,21 +35,18 @@ DB_RET Column::open(HANDLE hTable, string strColName, DATA_T DataType, bool bPri
 	{
 		if (DataType == DATA_T_BOOL)
 			return DB_RET_ERR_DB_PRIMARY_KEY;
-		if (strForeKey >= 0)
+		if (iForeKey >= 0)
 			return DB_RET_ERR_DB_PRIMARY_KEY;
 	}
 
 	if ((DataType < DATA_T_NONE) || (DataType >= DATA_T_END))
 		return DB_RET_ERR_PARAMETER;
 
-	if (strForeKey < 0)
-		return DB_RET_ERR_DB_ATTRIBUTE;
-
 	m_hTable = hTable;
 	m_Attr.strColName = strColName;
 	m_Attr.DataType = DataType;
 	m_Attr.bPriKey = bPriKey;
-	m_Attr.strForeKey = strForeKey;
+	m_Attr.iForeKey = iForeKey;
 
 	return DB_RET_SUCCESS;
 }
@@ -119,7 +57,7 @@ void Column::reset()
 	m_Attr.strColName.clear();
 	m_Attr.DataType = DATA_T_NONE;
 	m_Attr.bPriKey = false;
-	m_Attr.strForeKey = -1;
+	m_Attr.iForeKey = -1;
 	m_vstDatas.clear();
 
 	//	Initialize search varilabe.
@@ -277,7 +215,7 @@ DB_RET Column::getAttribute(COLUMN_ATTR *pAttr)
 }
 
 //	Column Attribute Format:
-//		|Type|PK|FK-Name_Length|FK-Name|Column-Name|
+//		|Type|PK|FK|Column-Name|
 DB_RET Column::save(FILE *fp)
 {
 	DB_RET			Ret;
@@ -292,14 +230,10 @@ DB_RET Column::save(FILE *fp)
 	//	Character 2: Primary key
 	str.at(1) = m_Attr.bPriKey + '0';
 
-	//	Character 3-4: Foreign key name length.
-//	str.at(2) = (m_Attr.strForeKey.length() / 10) + '0';
-//	str.at(3) = (m_Attr.strForeKey.length() % 10) + '0';
+	//	Character 3: Foreign key name length.
+//	str.at(2) = m_Attr.iForeKey + '0';
 
-	//	Character 5-Length+5: Foreign key name
-//	str.append(m_Attr.strForeKey);
-
-	//	Character X-TAB: Column name
+	//	Character 4-TAB: Column name
 	str.append(m_Attr.strColName);
 
 	for (uiData = 0; uiData < m_vstDatas.size(); uiData++)
@@ -416,7 +350,7 @@ DB_RET Table::getAttribute(TABLE_ATTR *pAttr)
 	return DB_RET_SUCCESS;
 }
 
-DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int strForeignKey)
+DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int iForeignKey)
 {
 	DB_RET	Ret = DB_RET_SUCCESS;
 	Column	col;
@@ -424,7 +358,7 @@ DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, in
 	if ((m_Attr.iPrimary != -1) && (bPrimaryKey == true))
 		return DB_RET_ERR_DB_ATTRIBUTE;
 
-	Ret = col.open(this, strColName, DataType, bPrimaryKey, strForeignKey);
+	Ret = col.open(this, strColName, DataType, bPrimaryKey, iForeignKey);
 	if (Ret != DB_RET_SUCCESS)
 		return Ret;
 /*
@@ -445,8 +379,8 @@ DB_RET Table::addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, in
 	m_vCols.push_back(col);
 	if (bPrimaryKey == true)
 		m_Attr.iPrimary = m_vCols.size() - 1;
-	if (strForeignKey >= 0)
-		m_Attr.vstrForeign.push_back(strForeignKey);
+	if (iForeignKey >= 0)
+		m_Attr.viForeign.push_back(iForeignKey);
 
 	return DB_RET_SUCCESS;
 }
@@ -719,7 +653,7 @@ void Table::reset()
 	m_hDb = NULL;
 	m_Attr.strTableName = "";
 	m_Attr.iPrimary = -1;
-	m_Attr.vstrForeign.clear();
+	m_Attr.viForeign.clear();
 	m_vCols.clear();
 	//	Reset search variable arraies.
 	m_Search.iLast = -1;
@@ -789,7 +723,7 @@ DB_RET Db::addTable(Table *pTable)
 	if ((Ret = pTable->getAttribute(&Attr)) != DB_RET_SUCCESS)
 		return Ret;
 
-	for (ui = 0; ui < Attr.vstrForeign.size(); ui++)
+	for (ui = 0; ui < Attr.viForeign.size(); ui++)
 	{
 //		if (searchTable(Attr.vstrForeign.at(ui)) < 0)
 			return DB_RET_ERR_PARAMETER;
@@ -906,9 +840,9 @@ bool Db::valid()
 			return false;
 		
 		//	Check the foreign table is exist.
-		for (uiForeignKey = 0; uiForeignKey < Attr.vstrForeign.size(); uiForeignKey++)
+		for (uiForeignKey = 0; uiForeignKey < Attr.viForeign.size(); uiForeignKey++)
 		{
-			((Table *)(m_vTables.at(Attr.vstrForeign.at(uiForeignKey))))->getAttribute(&Attr);
+			((Table *)(m_vTables.at(Attr.viForeign.at(uiForeignKey))))->getAttribute(&Attr);
 			if (searchTable(Attr.strTableName) < 0)
 				return false;
 		}

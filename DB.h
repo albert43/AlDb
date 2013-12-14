@@ -15,7 +15,7 @@ using namespace std;
 #define	VERSION_LIB_ALDB_MAJOR		1
 #define	VERSION_LIB_ALDB_MINOR		0
 #define	VERSION_LIB_ALDB_RELEASE	0
-#define	VERSION_LIB_ALDB_BUILD		6
+#define	VERSION_LIB_ALDB_BUILD		7
 
 #define	ALDB_NAME_LENGTH_MAX		32
 
@@ -75,14 +75,14 @@ namespace AlDb
 		string			strColName;
 		DATA_T			DataType;
 		bool			bPriKey;
-		int			strForeKey;
+		int				iForeKey;
 	};
 
 	class Column
 	{
 	public:
 		Column();
-		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int strForeKey);
+		Column(HANDLE hTable, string strColName, DATA_T DataType, bool bPriKey, int iForeKey);
 		
 		//	# Description:
 		//		Open a Column class.
@@ -201,7 +201,7 @@ namespace AlDb
 	{
 		string				strTableName;
 		int					iPrimary;
-		vector<int>			vstrForeign;
+		vector<int>			viForeign;
 	};
 	
 	class Table
@@ -238,7 +238,7 @@ namespace AlDb
 		//		DB_RET_ERR_PARAMETER		: Input parameter incorrect.
 		//		DB_RET_ERR_DB_PRIMARY_KEY	: Violate the primary attribution.
 		//		DB_RET_ERR_DB_FULL			: The column is full.
-		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int strForeignKey);
+		DB_RET addColumn(string strColName, DATA_T DataType, bool bPrimaryKey, int iForeignKey);
 		
 		//	# Description:
 		//		Search the column.
